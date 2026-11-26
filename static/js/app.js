@@ -63,7 +63,9 @@ function getSavedApiKey() {
 }
 
 function getSavedModel() {
-  return localStorage.getItem(LS_MODEL_KEY) || "gemini-2.0-flash";
+  const m = localStorage.getItem(LS_MODEL_KEY);
+  if (!m || m === "gemini-2.0-flash" || m === "gemini-1.5-flash") return "gemini-3.8-flash";
+  return m;
 }
 
 function updateAiEngineBadge() {

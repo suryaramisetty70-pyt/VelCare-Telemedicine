@@ -356,14 +356,14 @@ KNOWLEDGE_BASE = [
 ]
 
 
-ALLOWED_GEMINI_MODELS = {"gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"}
+ALLOWED_GEMINI_MODELS = {"gemini-3.8-flash", "gemini-3.8-pro", "gemini-2.5-flash", "gemini-2.0-flash"}
 
 
 def classify_and_respond(
     user_message: str,
     patient_context: dict = None,
     custom_api_key: str = None,
-    model_name: str = "gemini-2.0-flash",
+    model_name: str = "gemini-3.8-flash",
 ):
     text_lower = user_message.lower().strip()
 
@@ -386,7 +386,7 @@ def classify_and_respond(
 
     # 2. Optional Live Gemini API Call (uses frontend Settings key or server env key)
     api_key = (custom_api_key or "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
-    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-2.0-flash"
+    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
     api_warning = None
     if api_key:
         try:
@@ -414,7 +414,7 @@ def classify_and_respond(
                     }
                 ]
             }
-            resp = requests.post(url, json=payload, timeout=15)
+            resp = requests.post(url, json=payload, timeout=25)
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = data.get("candidates", [])
@@ -609,7 +609,7 @@ def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     custom_api_key = (data.get("api_key") or "").strip()
-    model_name = (data.get("model") or "gemini-2.0-flash").strip()
+    model_name = (data.get("model") or "gemini-3.8-flash").strip()
     if not message:
         return jsonify({"error": "Please enter a health question or symptom."}), 400
 
@@ -645,8 +645,8 @@ def chat():
 def test_gemini_key():
     data = request.get_json(silent=True) or {}
     api_key = (data.get("api_key") or "").strip()
-    model_name = (data.get("model") or "gemini-2.0-flash").strip()
-    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-2.0-flash"
+    model_name = (data.get("model") or "gemini-3.8-flash").strip()
+    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
 
     if not api_key:
         return jsonify({"ok": False, "error": "Please enter a Gemini API key first."}), 400
