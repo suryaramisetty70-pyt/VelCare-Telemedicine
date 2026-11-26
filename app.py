@@ -356,7 +356,15 @@ KNOWLEDGE_BASE = [
 ]
 
 
-def classify_and_respond(user_message: str, patient_context: dict = None):
+ALLOWED_GEMINI_MODELS = {"gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"}
+
+
+def classify_and_respond(
+    user_message: str,
+    patient_context: dict = None,
+    custom_api_key: str = None,
+    model_name: str = "gemini-2.0-flash",
+):
     text_lower = user_message.lower().strip()
 
     # 1. Emergency Triage Check (Highest Priority)
@@ -376,8 +384,10 @@ def classify_and_respond(user_message: str, patient_context: dict = None):
                 "source": "Safety Triage Engine",
             }
 
-    # 2. Optional Live Gemini API Call if GEMINI_API_KEY is configured
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    # 2. Optional Live Gemini API Call (uses frontend Settings key or server env key)
+    api_key = (custom_api_key or "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
+    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-2.0-flash"
+    api_warning = None
     if api_key:
         try:
             system_prompt = (
@@ -395,7 +405,7 @@ def classify_and_respond(user_message: str, patient_context: dict = None):
                     f"Allergies={patient_context.get('allergies') or 'None'}, "
                     f"Conditions={patient_context.get('chronic_conditions') or 'None'}."
                 )
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
             payload = {
                 "contents": [
                     {
@@ -404,7 +414,7 @@ def classify_and_respond(user_message: str, patient_context: dict = None):
                     }
                 ]
             }
-            resp = requests.post(url, json=payload, timeout=12)
+            resp = requests.post(url, json=payload, timeout=15)
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = data.get("candidates", [])
@@ -414,11 +424,13 @@ def classify_and_respond(user_message: str, patient_context: dict = None):
                         "reply": ai_text + "\n\n*Disclaimer: This is preliminary AI guidance and does not replace professional medical advice.*",
                         "intent": "gemini_ai",
                         "is_emergency": False,
-                        "source": "Gemini Generative AI",
+                        "source": f"Gemini AI ({selected_model})",
                     }
-        except Exception:
-            # Fall back seamlessly to local NLP engine if network/API fails
-            pass
+            else:
+                err_msg = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
+                api_warning = f"Gemini API returned an error ({err_msg}); used built-in NLP fallback."
+        except Exception as exc:
+            api_warning = f"Gemini API request failed ({exc}); used built-in NLP fallback."
 
     # 3. Local NLP Keyword & Intent Matching Engine
     for entry in KNOWLEDGE_BASE:
@@ -596,6 +608,8 @@ def list_doctors():
 def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
+    custom_api_key = (data.get("api_key") or "").strip()
+    model_name = (data.get("model") or "gemini-2.0-flash").strip()
     if not message:
         return jsonify({"error": "Please enter a health question or symptom."}), 400
 
@@ -610,7 +624,7 @@ def chat():
         if row:
             patient_context = dict(row)
 
-    result = classify_and_respond(message, patient_context)
+    result = classify_and_respond(message, patient_context, custom_api_key=custom_api_key, model_name=model_name)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn.execute(
@@ -625,6 +639,31 @@ def chat():
     conn.close()
 
     return jsonify(result)
+
+
+@app.route("/api/settings/test-gemini", methods=["POST"])
+def test_gemini_key():
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get("api_key") or "").strip()
+    model_name = (data.get("model") or "gemini-2.0-flash").strip()
+    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-2.0-flash"
+
+    if not api_key:
+        return jsonify({"ok": False, "error": "Please enter a Gemini API key first."}), 400
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
+    try:
+        resp = requests.post(
+            url,
+            json={"contents": [{"role": "user", "parts": [{"text": "Reply with OK only."}]}]},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return jsonify({"ok": True, "message": f"Connected successfully to {selected_model}!"})
+        err = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
+        return jsonify({"ok": False, "error": err}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 @app.route("/api/chat/history", methods=["GET"])
@@ -816,5 +855,6 @@ init_db()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    use_reloader = os.environ.get("FLASK_RELOAD", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=use_reloader)

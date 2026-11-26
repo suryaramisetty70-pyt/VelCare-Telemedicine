@@ -42,9 +42,18 @@
         <button class="nav-btn" data-section="consultation" onclick="showSection('consultation')">Doctor Consultation</button>
       </nav>
 
-      <div class="nav-auth" id="navAuth">
-        <button class="btn btn-outline" onclick="openAuthModal('login')">Login</button>
-        <button class="btn btn-primary" onclick="openAuthModal('register')">Register</button>
+      <div class="nav-right">
+        <button class="btn btn-sm btn-outline settings-btn" onclick="openSettingsModal()" title="AI &amp; API Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+        <div class="nav-auth" id="navAuth">
+          <button class="btn btn-outline" onclick="openAuthModal('login')">Login</button>
+          <button class="btn btn-primary" onclick="openAuthModal('register')">Register</button>
+        </div>
       </div>
     </div>
   </header>
@@ -167,10 +176,13 @@
           <h2>AI Medical Chatbot</h2>
           <p>Ask health-related questions or describe mild symptoms for preliminary guidance and safe suggestions.</p>
         </div>
-        <span class="badge live-badge" id="aiEngineBadge">
-          <span class="pulse-dot"></span>
-          NLP + GenAI Ready
-        </span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span class="badge live-badge" id="aiEngineBadge">
+            <span class="pulse-dot"></span>
+            NLP + GenAI Ready
+          </span>
+          <button class="btn btn-sm btn-outline" onclick="openSettingsModal()">Add / Change API Key</button>
+        </div>
       </div>
 
       <div class="chatbot-layout">
@@ -498,6 +510,46 @@
           </div>
         </div>
         <button type="submit" class="btn btn-primary btn-full btn-glow">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings Modal (API Key Configuration) -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeSettingsModal()"></div>
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      <h3 style="margin-bottom:6px; color:#0c4a6e;">AI &amp; API Settings</h3>
+      <p class="muted" style="margin-bottom:16px;">
+        Add your Google Gemini API key directly here to enable live Generative AI responses without modifying any backend files.
+        Stored safely in your browser.
+      </p>
+
+      <form onsubmit="saveApiSettings(event)">
+        <div class="form-group">
+          <label for="geminiApiKeyInput">Google Gemini API Key</label>
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." autocomplete="off" />
+            <button type="button" class="btn btn-sm btn-outline" id="toggleKeyVisBtn" onclick="toggleApiKeyVisibility()">Show</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="geminiModelSelect">Gemini Model</label>
+          <select id="geminiModelSelect">
+            <option value="gemini-2.0-flash">gemini-2.0-flash (Recommended)</option>
+            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+          </select>
+        </div>
+
+        <div id="apiTestStatus" class="muted" style="margin-bottom:12px; font-weight:600;"></div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary btn-glow" style="flex:1;">Save &amp; Enable AI</button>
+          <button type="button" class="btn btn-secondary" onclick="testApiSettings()">Test Key</button>
+          <button type="button" class="btn btn-outline" onclick="clearApiSettings()">Clear</button>
+        </div>
       </form>
     </div>
   </div>

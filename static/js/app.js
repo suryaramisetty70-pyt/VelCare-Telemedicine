@@ -3,6 +3,10 @@ let doctorsList = [];
 let appointmentsList = [];
 let activeConsultationId = null;
 let localMediaStream = null;
+let serverGeminiConfigured = false;
+
+const LS_API_KEY = "velcare_gemini_api_key";
+const LS_MODEL_KEY = "velcare_gemini_model";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const dateInput = document.getElementById("apptDate");
@@ -47,13 +51,104 @@ async function checkHealth() {
   try {
     const res = await fetch("/api/health");
     const data = await res.json();
-    const badge = document.getElementById("aiEngineBadge");
-    if (badge) {
-      const label = data.gemini_configured ? "Gemini AI Connected" : "NLP + Safety Engine Active";
-      badge.innerHTML = `<span class="pulse-dot"></span>${label}`;
-    }
+    serverGeminiConfigured = Boolean(data.gemini_configured);
+    updateAiEngineBadge();
   } catch (e) {
     console.error(e);
+  }
+}
+
+function getSavedApiKey() {
+  return (localStorage.getItem(LS_API_KEY) || "").trim();
+}
+
+function getSavedModel() {
+  return localStorage.getItem(LS_MODEL_KEY) || "gemini-2.0-flash";
+}
+
+function updateAiEngineBadge() {
+  const badge = document.getElementById("aiEngineBadge");
+  if (!badge) return;
+  const userKey = getSavedApiKey();
+  let label = "NLP + Safety Engine Active";
+  if (userKey) {
+    label = `Gemini AI Active (${getSavedModel()})`;
+  } else if (serverGeminiConfigured) {
+    label = "Gemini AI Connected (Server)";
+  }
+  badge.innerHTML = `<span class="pulse-dot"></span>${label}`;
+}
+
+function openSettingsModal() {
+  document.getElementById("geminiApiKeyInput").value = getSavedApiKey();
+  document.getElementById("geminiModelSelect").value = getSavedModel();
+  document.getElementById("apiTestStatus").textContent = "";
+  document.getElementById("settingsModal").classList.remove("hidden");
+}
+
+function closeSettingsModal() {
+  document.getElementById("settingsModal").classList.add("hidden");
+}
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById("geminiApiKeyInput");
+  const btn = document.getElementById("toggleKeyVisBtn");
+  if (input.type === "password") {
+    input.type = "text";
+    btn.textContent = "Hide";
+  } else {
+    input.type = "password";
+    btn.textContent = "Show";
+  }
+}
+
+function saveApiSettings(e) {
+  e.preventDefault();
+  const key = document.getElementById("geminiApiKeyInput").value.trim();
+  const model = document.getElementById("geminiModelSelect").value;
+  if (key) {
+    localStorage.setItem(LS_API_KEY, key);
+  } else {
+    localStorage.removeItem(LS_API_KEY);
+  }
+  localStorage.setItem(LS_MODEL_KEY, model);
+  updateAiEngineBadge();
+  closeSettingsModal();
+  showToast(key ? `Gemini AI enabled (${model})!` : "Using built-in NLP engine.");
+}
+
+function clearApiSettings() {
+  localStorage.removeItem(LS_API_KEY);
+  document.getElementById("geminiApiKeyInput").value = "";
+  document.getElementById("apiTestStatus").textContent = "Cleared. Using built-in NLP & Safety Engine.";
+  updateAiEngineBadge();
+  showToast("API key cleared.");
+}
+
+async function testApiSettings() {
+  const key = document.getElementById("geminiApiKeyInput").value.trim();
+  const model = document.getElementById("geminiModelSelect").value;
+  const statusEl = document.getElementById("apiTestStatus");
+  statusEl.style.color = "var(--muted)";
+  statusEl.textContent = "Testing connection...";
+
+  try {
+    const res = await fetch("/api/settings/test-gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key, model }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.style.color = "var(--secondary-dark)";
+      statusEl.textContent = "✓ " + data.message;
+    } else {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = "✕ " + (data.error || "Connection failed");
+    }
+  } catch (err) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "✕ Network error while testing key.";
   }
 }
 
@@ -184,8 +279,14 @@ async function demoLogin(type) {
 
 // --- AI Medical Chatbot ---
 function usePrompt(text) {
-  document.getElementById("chatInput").value = text;
-  document.getElementById("chatForm").dispatchEvent(new Event("submit"));
+  const input = document.getElementById("chatInput");
+  input.value = text;
+  const form = document.getElementById("chatForm");
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit();
+  } else {
+    sendChatMessage(new Event("submit", { cancelable: true }));
+  }
 }
 
 async function loadChatHistory() {
@@ -235,7 +336,11 @@ async function sendChatMessage(e) {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({
+        message: text,
+        api_key: getSavedApiKey(),
+        model: getSavedModel(),
+      }),
     });
     const data = await res.json();
     removeTypingIndicator();
