@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VelCare Telemedicine — Generative AI Virtual Medical Assistant</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230ea5e9'/%3E%3Cstop offset='100%25' stop-color='%2310b981'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M27 16h10v11h11v10H37v11H27V37H16V27h11z' fill='%23fff'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- Animated Ambient Background -->
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- Top Navigation Menu -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <div class="brand" onclick="showSection('home')">
+        <span class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </span>
+        <div>
+          <span class="brand-title">VelCare Telemedicine</span>
+          <span class="brand-sub">AI Virtual Medical Assistant</span>
+        </div>
+      </div>
+
+      <nav class="nav-links" id="navLinks">
+        <button class="nav-btn active" data-section="home" onclick="showSection('home')">Home</button>
+        <button class="nav-btn" data-section="chatbot" onclick="showSection('chatbot')">AI Medical Chatbot</button>
+        <button class="nav-btn" data-section="appointments" onclick="showSection('appointments')">Appointments</button>
+        <button class="nav-btn" data-section="patient" onclick="showSection('patient')">Patient Profile</button>
+        <button class="nav-btn" data-section="consultation" onclick="showSection('consultation')">Doctor Consultation</button>
+      </nav>
+
+      <div class="nav-auth" id="navAuth">
+        <button class="btn btn-outline" onclick="openAuthModal('login')">Login</button>
+        <button class="btn btn-primary" onclick="openAuthModal('register')">Register</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container main-content">
+    <!-- 1. HOME PAGE -->
+    <section id="section-home" class="page-section active">
+      <div class="hero">
+        <div class="hero-text">
+          <div class="hero-pill-row">
+            <span class="badge live-badge">
+              <span class="pulse-dot"></span>
+              24/7 Generative AI &amp; Telemedicine
+            </span>
+          </div>
+          <h1>Intelligent Virtual Medical Assistance for <span class="gradient-text">Accessible Healthcare</span></h1>
+          <p>
+            Welcome to <strong>VelCare Telemedicine Hospital</strong>. Our Generative AI &amp; NLP-powered
+            virtual medical assistant provides 24/7 preliminary health guidance, instant emergency triage,
+            seamless appointment scheduling, and online doctor consultations — built to make quality
+            healthcare accessible from anywhere.
+          </p>
+
+          <!-- Animated ECG Pulse Strip -->
+          <div class="ecg-strip" aria-hidden="true">
+            <svg viewBox="0 0 420 48" class="ecg-svg" preserveAspectRatio="none">
+              <path class="ecg-path" d="M0,26 L75,26 L90,26 L98,14 L106,38 L116,6 L126,42 L134,26 L155,26 L210,26 L225,26 L233,14 L241,38 L251,6 L261,42 L269,26 L295,26 L420,26" />
+            </svg>
+            <span class="ecg-label">AI Triage &amp; Vitals Monitoring Active</span>
+          </div>
+
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg btn-glow" onclick="showSection('appointments')">
+              <span>Book Appointment</span>
+              <span class="btn-arrow">&rarr;</span>
+            </button>
+            <button class="btn btn-secondary btn-lg" onclick="showSection('chatbot')">
+              <span>Ask AI Medical Chatbot</span>
+            </button>
+          </div>
+          <p class="disclaimer-inline">
+            <strong>Medical Safety Notice:</strong> AI responses provide preliminary general health information only
+            and do not replace professional medical diagnosis or emergency care.
+          </p>
+        </div>
+
+        <div class="hero-card">
+          <div>
+            <div class="hero-card-top">
+              <span class="mini-tag">Hospital &amp; Platform Highlights</span>
+              <span class="status-chip-light">Online</span>
+            </div>
+            <h3>Smart Care, Anytime</h3>
+            <ul class="highlight-list">
+              <li><strong>24/7 AI Health Assistant:</strong> Instant, easy-to-understand answers &amp; safe self-care tips.</li>
+              <li><strong>Emergency Triage Detection:</strong> Automatically flags severe symptoms and advises immediate care.</li>
+              <li><strong>Specialist Tele-Consultations:</strong> General Medicine, Cardiology, Dermatology, Pediatrics &amp; Neurology.</li>
+              <li><strong>Secure Patient Records:</strong> Centralized basic health info &amp; appointment history.</li>
+            </ul>
+          </div>
+
+          <div class="hero-stats-row">
+            <div class="stat-pill">
+              <span class="stat-val">5+</span>
+              <span class="stat-lbl">Specialists</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-val">24/7</span>
+              <span class="stat-lbl">AI Support</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-val">&lt;1s</span>
+              <span class="stat-lbl">Triage</span>
+            </div>
+          </div>
+
+          <div class="demo-box">
+            <span class="demo-title">Quick Viva / Demo Access:</span>
+            <div class="demo-actions">
+              <button class="btn btn-sm btn-glass" onclick="demoLogin('patient')">Demo Patient Login</button>
+              <button class="btn btn-sm btn-glass" onclick="demoLogin('doctor')">Demo Doctor Login</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card stagger-1" onclick="showSection('chatbot')">
+          <div class="feature-icon-wrap">01</div>
+          <h4>AI Medical Chatbot</h4>
+          <p>Enter health-related questions or symptoms and receive safe, structured guidance powered by Generative AI &amp; NLP.</p>
+          <span class="card-link">Open Chatbot &rarr;</span>
+        </div>
+        <div class="feature-card stagger-2" onclick="showSection('appointments')">
+          <div class="feature-icon-wrap">02</div>
+          <h4>Appointment Management</h4>
+          <p>Select a specialist doctor, pick a convenient date and time slot, book, reschedule, or view appointment details.</p>
+          <span class="card-link">Book Slot &rarr;</span>
+        </div>
+        <div class="feature-card stagger-3" onclick="showSection('patient')">
+          <div class="feature-icon-wrap">03</div>
+          <h4>Patient Management</h4>
+          <p>Manage patient registration, personal details, allergies, chronic conditions, medications, and appointment history.</p>
+          <span class="card-link">View Profile &rarr;</span>
+        </div>
+        <div class="feature-card stagger-4" onclick="showSection('consultation')">
+          <div class="feature-icon-wrap">04</div>
+          <h4>Doctor Consultation</h4>
+          <p>Browse doctor profiles, join the online consultation interface, chat with your doctor, and track consultation status.</p>
+          <span class="card-link">Join Room &rarr;</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. AI MEDICAL CHATBOT -->
+    <section id="section-chatbot" class="page-section">
+      <div class="section-header">
+        <div>
+          <h2>AI Medical Chatbot</h2>
+          <p>Ask health-related questions or describe mild symptoms for preliminary guidance and safe suggestions.</p>
+        </div>
+        <span class="badge live-badge" id="aiEngineBadge">
+          <span class="pulse-dot"></span>
+          NLP + GenAI Ready
+        </span>
+      </div>
+
+      <div class="chatbot-layout">
+        <div class="chat-panel">
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg assistant">
+              <div class="msg-meta">Virtual Medical Assistant • Preliminary Guidance</div>
+              <div class="msg-body">
+                Hello! I am your AI Virtual Medical Assistant. You can ask me general health questions,
+                describe mild symptoms, or ask about booking a doctor consultation.<br /><br />
+                <em>Note: For emergencies like chest pain or difficulty breathing, seek immediate hospital care.</em>
+              </div>
+            </div>
+          </div>
+
+          <form class="chat-input-form" id="chatForm" onsubmit="sendChatMessage(event)">
+            <input
+              type="text"
+              id="chatInput"
+              placeholder="Type your health question or symptoms (e.g., 'What are the benefits of drinking water?')..."
+              autocomplete="off"
+              required
+            />
+            <button type="submit" class="btn btn-primary btn-glow" id="chatSendBtn">Send</button>
+          </form>
+        </div>
+
+        <aside class="chat-sidebar">
+          <div class="card">
+            <h4>Sample Questions</h4>
+            <p class="muted">Click any prompt to test the AI assistant:</p>
+            <div class="chip-list">
+              <button class="chip" onclick="usePrompt('What are the benefits of drinking water?')">Benefits of drinking water</button>
+              <button class="chip" onclick="usePrompt('I have a mild headache since morning')">Mild headache guidance</button>
+              <button class="chip" onclick="usePrompt('I have mild fever and cough for 1 day')">Fever &amp; cough care</button>
+              <button class="chip" onclick="usePrompt('I have acidity and stomach discomfort')">Stomach &amp; acidity tips</button>
+              <button class="chip chip-danger" onclick="usePrompt('I am having severe chest pain')">Test Emergency Triage</button>
+            </div>
+          </div>
+
+          <div class="card safety-card">
+            <h4>Safety &amp; Referral Policy</h4>
+            <ul>
+              <li>Provides general wellness &amp; preliminary symptom guidance only.</li>
+              <li>Automatically detects red-flag symptoms and advises emergency care.</li>
+              <li>Recommends booking a qualified doctor when symptoms persist.</li>
+            </ul>
+            <button class="btn btn-secondary btn-full" onclick="showSection('appointments')">Book a Doctor Now</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 3. APPOINTMENT MANAGEMENT -->
+    <section id="section-appointments" class="page-section">
+      <div class="section-header">
+        <div>
+          <h2>Appointment Management</h2>
+          <p>Select a doctor, choose date and time, book appointments, and manage your schedule.</p>
+        </div>
+      </div>
+
+      <div id="reminderBanner" class="reminder-banner hidden"></div>
+
+      <div class="two-col-layout">
+        <div class="card">
+          <h3>Book an Appointment</h3>
+          <form id="appointmentForm" onsubmit="bookAppointment(event)">
+            <div class="form-group">
+              <label for="apptDoctor">Select Doctor</label>
+              <select id="apptDoctor" required></select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="apptDate">Select Date</label>
+                <input type="date" id="apptDate" required />
+              </div>
+              <div class="form-group">
+                <label for="apptTime">Select Time Slot</label>
+                <select id="apptTime" required>
+                  <option value="09:30 AM">09:30 AM</option>
+                  <option value="10:30 AM">10:30 AM</option>
+                  <option value="11:30 AM">11:30 AM</option>
+                  <option value="02:00 PM">02:00 PM</option>
+                  <option value="03:30 PM">03:30 PM</option>
+                  <option value="04:30 PM">04:30 PM</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="apptSymptoms">Symptoms / Reason for Visit</label>
+              <textarea id="apptSymptoms" rows="3" placeholder="Briefly describe your symptoms or consultation reason..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-glow">Confirm Appointment</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head-row">
+            <h3>Your Appointments</h3>
+            <button class="btn btn-sm btn-outline" onclick="loadAppointments()">Refresh</button>
+          </div>
+          <div id="appointmentsList" class="stack-list">
+            <p class="muted">Please log in to view and manage your appointments.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. PATIENT MANAGEMENT -->
+    <section id="section-patient" class="page-section">
+      <div class="section-header">
+        <div>
+          <h2>Patient Management</h2>
+          <p>Manage patient registration details, basic health information, and appointment history.</p>
+        </div>
+      </div>
+
+      <div id="patientGuestNotice" class="card guest-card">
+        <h3>Not Logged In</h3>
+        <p>Please log in or register as a patient to view and update your health profile and appointment history.</p>
+        <div class="hero-actions" style="margin-top:14px; margin-bottom:0;">
+          <button class="btn btn-primary btn-glow" onclick="openAuthModal('register')">Register as Patient</button>
+          <button class="btn btn-outline" onclick="openAuthModal('login')">Login</button>
+          <button class="btn btn-secondary" onclick="demoLogin('patient')">Quick Demo Patient</button>
+        </div>
+      </div>
+
+      <div id="patientDashboard" class="two-col-layout hidden">
+        <div class="card">
+          <h3>Patient Details &amp; Basic Health Info</h3>
+          <form id="profileForm" onsubmit="saveProfile(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="profName">Full Name</label>
+                <input type="text" id="profName" required />
+              </div>
+              <div class="form-group">
+                <label for="profPhone">Phone Number</label>
+                <input type="text" id="profPhone" placeholder="+91 ..." />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="profAge">Age</label>
+                <input type="number" id="profAge" min="1" max="120" />
+              </div>
+              <div class="form-group">
+                <label for="profGender">Gender</label>
+                <select id="profGender">
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="profBlood">Blood Group</label>
+                <select id="profBlood">
+                  <option value="">Select</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profAllergies">Known Allergies</label>
+              <input type="text" id="profAllergies" placeholder="e.g., Penicillin, Dust, None" />
+            </div>
+            <div class="form-group">
+              <label for="profConditions">Chronic Conditions</label>
+              <input type="text" id="profConditions" placeholder="e.g., Asthma, Diabetes, None" />
+            </div>
+            <div class="form-group">
+              <label for="profMeds">Current Medications</label>
+              <input type="text" id="profMeds" placeholder="e.g., Vitamin D3, None" />
+            </div>
+            <div class="form-group">
+              <label for="profEmergency">Emergency Contact</label>
+              <input type="text" id="profEmergency" placeholder="+91 ..." />
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-glow">Save Health Information</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Appointment History</h3>
+          <div id="patientHistoryList" class="stack-list">
+            <p class="muted">No appointments recorded yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. DOCTOR CONSULTATION -->
+    <section id="section-consultation" class="page-section">
+      <div class="section-header">
+        <div>
+          <h2>Doctor Consultation</h2>
+          <p>Explore specialist doctor information, join your online consultation, and track consultation status.</p>
+        </div>
+      </div>
+
+      <h3 class="sub-heading">Our Telemedicine Specialists</h3>
+      <div id="doctorsGrid" class="doctors-grid"></div>
+
+      <div class="consultation-room card" id="consultationRoom">
+        <div class="card-head-row">
+          <div>
+            <h3>Online Consultation Interface</h3>
+            <p class="muted" id="consultSubTitle">Select an appointment below to open the consultation room.</p>
+          </div>
+          <span class="status-pill" id="consultStatusBadge">No Active Session</span>
+        </div>
+
+        <div class="consult-controls-bar">
+          <div class="form-group inline-select">
+            <label for="consultApptSelect">Active Appointment:</label>
+            <select id="consultApptSelect" onchange="selectConsultation(this.value)"></select>
+          </div>
+          <div class="video-toggles">
+            <button class="btn btn-sm btn-secondary" id="toggleVideoBtn" onclick="toggleVideoSimulation()">Start Video Call</button>
+            <button class="btn btn-sm btn-outline" id="completeConsultBtn" onclick="markConsultationCompleted()">Mark Completed</button>
+          </div>
+        </div>
+
+        <div class="consult-grid">
+          <div class="video-stage" id="videoStage">
+            <div class="video-placeholder" id="videoPlaceholder">
+              <div class="avatar-ring">
+                <div class="avatar-circle" id="consultDoctorAvatar">DR</div>
+              </div>
+              <h4 id="consultDoctorName">Doctor Consultation Room</h4>
+              <p id="consultDoctorSpec" class="muted-light">Select an appointment to connect with your doctor</p>
+              <span class="video-state-tag" id="videoStateTag">Video Standby</span>
+            </div>
+            <video id="localVideo" class="local-video hidden" autoplay muted playsinline></video>
+          </div>
+
+          <div class="consult-chat-box">
+            <div class="consult-messages" id="consultMessages">
+              <p class="muted">Select a booked appointment to view consultation messages.</p>
+            </div>
+            <form class="chat-input-form" onsubmit="sendConsultMessage(event)">
+              <input type="text" id="consultMsgInput" placeholder="Send a message to the doctor/patient..." />
+              <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="doctor-notes-box" id="doctorNotesBox">
+          <label for="consultNotesInput"><strong>Consultation Notes / Prescription Summary:</strong></label>
+          <div class="notes-row">
+            <input type="text" id="consultNotesInput" placeholder="Doctor notes or follow-up instructions..." />
+            <button class="btn btn-sm btn-primary" onclick="saveConsultationNotes()">Save Notes</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Login / Register Modal -->
+  <div id="authModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeAuthModal()"></div>
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+      <div class="auth-tabs">
+        <button id="tabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+        <button id="tabRegister" class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="patient@velcare.com" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-glow">Login</button>
+      </form>
+
+      <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" placeholder="Enter your full name" required />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" placeholder="you@example.com" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input type="password" id="regPassword" minlength="4" placeholder="Min 4 chars" required />
+          </div>
+          <div class="form-group">
+            <label for="regRole">Account Type</label>
+            <select id="regRole">
+              <option value="patient">Patient</option>
+              <option value="doctor">Doctor</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="regAge">Age</label>
+            <input type="number" id="regAge" min="1" max="120" placeholder="Age" />
+          </div>
+          <div class="form-group">
+            <label for="regGender">Gender</label>
+            <select id="regGender">
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-glow">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <footer class="footer">
+    <div class="container">
+      <span>VelCare Telemedicine • Generative AI Based Virtual Medical Assistance (Minor Project-I)</span>
+      <span>Preliminary guidance only — not a substitute for professional medical care.</span>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
