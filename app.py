@@ -356,14 +356,34 @@ KNOWLEDGE_BASE = [
 ]
 
 
-ALLOWED_GEMINI_MODELS = {"gemini-3.8-flash", "gemini-3.8-pro", "gemini-2.5-flash", "gemini-2.0-flash"}
+ALLOWED_GEMINI_MODELS = {"gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"}
+ALLOWED_GROQ_MODELS = {"llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"}
+
+
+def build_medical_system_prompt(patient_context: dict = None) -> str:
+    system_prompt = (
+        "You are a safe, empathetic Virtual Medical Assistant for a Telemedicine platform. "
+        "Provide clear, preliminary general health information and safe self-care suggestions. "
+        "Never diagnose definitively or prescribe controlled medications. "
+        "Always advise consulting a qualified doctor if symptoms persist or worsen. "
+        "Keep responses concise, structured, and easy to understand."
+    )
+    if patient_context:
+        system_prompt += (
+            f"\nPatient profile context: Age={patient_context.get('age') or 'N/A'}, "
+            f"Gender={patient_context.get('gender') or 'N/A'}, "
+            f"Allergies={patient_context.get('allergies') or 'None'}, "
+            f"Conditions={patient_context.get('chronic_conditions') or 'None'}."
+        )
+    return system_prompt
 
 
 def classify_and_respond(
     user_message: str,
     patient_context: dict = None,
     custom_api_key: str = None,
-    model_name: str = "gemini-3.8-flash",
+    model_name: str = "llama-3.3-70b-versatile",
+    provider: str = "",
 ):
     text_lower = user_message.lower().strip()
 
@@ -384,53 +404,81 @@ def classify_and_respond(
                 "source": "Safety Triage Engine",
             }
 
-    # 2. Optional Live Gemini API Call (uses frontend Settings key or server env key)
-    api_key = (custom_api_key or "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
-    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
-    api_warning = None
-    if api_key:
-        try:
-            system_prompt = (
-                "You are a safe, empathetic Virtual Medical Assistant for a Telemedicine platform. "
-                "Provide clear, preliminary general health information and safe self-care suggestions. "
-                "Never diagnose definitively or prescribe controlled medications. "
-                "Always advise consulting a qualified doctor if symptoms persist or worsen. "
-                "Keep responses concise, structured, and easy to understand."
-            )
-            context_note = ""
-            if patient_context:
-                context_note = (
-                    f"\nPatient profile context: Age={patient_context.get('age') or 'N/A'}, "
-                    f"Gender={patient_context.get('gender') or 'N/A'}, "
-                    f"Allergies={patient_context.get('allergies') or 'None'}, "
-                    f"Conditions={patient_context.get('chronic_conditions') or 'None'}."
+    # 2. Determine AI Provider & Key (Groq or Gemini)
+    raw_key = (custom_api_key or "").strip()
+    prov = (provider or "").strip().lower()
+    if not prov:
+        if raw_key.startswith("gsk_") or os.environ.get("GROQ_API_KEY", "").strip():
+            prov = "groq"
+        elif raw_key or os.environ.get("GEMINI_API_KEY", "").strip():
+            prov = "gemini"
+
+    system_prompt = build_medical_system_prompt(patient_context)
+
+    if prov == "groq":
+        groq_key = raw_key or os.environ.get("GROQ_API_KEY", "").strip()
+        selected_model = model_name if model_name in ALLOWED_GROQ_MODELS else "llama-3.3-70b-versatile"
+        if groq_key:
+            try:
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {groq_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": selected_model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message},
+                        ],
+                        "temperature": 0.4,
+                        "max_tokens": 600,
+                    },
+                    timeout=20,
                 )
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
-            payload = {
-                "contents": [
-                    {
-                        "role": "user",
-                        "parts": [{"text": f"{system_prompt}{context_note}\n\nPatient Question: {user_message}"}],
-                    }
-                ]
-            }
-            resp = requests.post(url, json=payload, timeout=25)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    ai_text = candidates[0]["content"]["parts"][0]["text"]
-                    return {
-                        "reply": ai_text + "\n\n*Disclaimer: This is preliminary AI guidance and does not replace professional medical advice.*",
-                        "intent": "gemini_ai",
-                        "is_emergency": False,
-                        "source": f"Gemini AI ({selected_model})",
-                    }
-            else:
-                err_msg = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
-                api_warning = f"Gemini API returned an error ({err_msg}); used built-in NLP fallback."
-        except Exception as exc:
-            api_warning = f"Gemini API request failed ({exc}); used built-in NLP fallback."
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        ai_text = choices[0]["message"]["content"]
+                        return {
+                            "reply": ai_text + "\n\n*Disclaimer: This is preliminary AI guidance and does not replace professional medical advice.*",
+                            "intent": "groq_ai",
+                            "is_emergency": False,
+                            "source": f"Groq AI ({selected_model})",
+                        }
+            except Exception:
+                pass
+
+    if prov == "gemini":
+        gemini_key = raw_key or os.environ.get("GEMINI_API_KEY", "").strip()
+        selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
+        if gemini_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [
+                        {
+                            "role": "user",
+                            "parts": [{"text": f"{system_prompt}\n\nPatient Question: {user_message}"}],
+                        }
+                    ]
+                }
+                resp = requests.post(url, json=payload, timeout=25)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        ai_text = candidates[0]["content"]["parts"][0]["text"]
+                        return {
+                            "reply": ai_text + "\n\n*Disclaimer: This is preliminary AI guidance and does not replace professional medical advice.*",
+                            "intent": "gemini_ai",
+                            "is_emergency": False,
+                            "source": f"Gemini AI ({selected_model})",
+                        }
+            except Exception:
+                pass
 
     # 3. Local NLP Keyword & Intent Matching Engine
     for entry in KNOWLEDGE_BASE:
@@ -467,7 +515,13 @@ def index():
 
 @app.route("/api/health", methods=["GET"])
 def api_health():
-    return jsonify({"status": "ok", "gemini_configured": bool(os.environ.get("GEMINI_API_KEY", "").strip())})
+    return jsonify(
+        {
+            "status": "ok",
+            "gemini_configured": bool(os.environ.get("GEMINI_API_KEY", "").strip()),
+            "groq_configured": bool(os.environ.get("GROQ_API_KEY", "").strip()),
+        }
+    )
 
 
 # --- Auth & Patient Management APIs ---
@@ -609,7 +663,8 @@ def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     custom_api_key = (data.get("api_key") or "").strip()
-    model_name = (data.get("model") or "gemini-3.8-flash").strip()
+    model_name = (data.get("model") or "llama-3.3-70b-versatile").strip()
+    provider = (data.get("provider") or "").strip().lower()
     if not message:
         return jsonify({"error": "Please enter a health question or symptom."}), 400
 
@@ -624,7 +679,13 @@ def chat():
         if row:
             patient_context = dict(row)
 
-    result = classify_and_respond(message, patient_context, custom_api_key=custom_api_key, model_name=model_name)
+    result = classify_and_respond(
+        message,
+        patient_context,
+        custom_api_key=custom_api_key,
+        model_name=model_name,
+        provider=provider,
+    )
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn.execute(
@@ -641,25 +702,53 @@ def chat():
     return jsonify(result)
 
 
+@app.route("/api/settings/test", methods=["POST"])
 @app.route("/api/settings/test-gemini", methods=["POST"])
-def test_gemini_key():
+def test_ai_key():
     data = request.get_json(silent=True) or {}
     api_key = (data.get("api_key") or "").strip()
-    model_name = (data.get("model") or "gemini-3.8-flash").strip()
-    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
+    provider = (data.get("provider") or "").strip().lower()
+    model_name = (data.get("model") or "").strip()
 
     if not api_key:
-        return jsonify({"ok": False, "error": "Please enter a Gemini API key first."}), 400
+        return jsonify({"ok": False, "error": "Please enter an API key first."}), 400
 
+    if not provider:
+        provider = "groq" if api_key.startswith("gsk_") else "gemini"
+
+    if provider == "groq":
+        selected_model = model_name if model_name in ALLOWED_GROQ_MODELS else "llama-3.3-70b-versatile"
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": selected_model,
+                    "messages": [{"role": "user", "content": "Reply with OK only."}],
+                    "max_tokens": 10,
+                },
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                return jsonify({"ok": True, "message": f"Connected successfully to Groq ({selected_model})!"})
+            err = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
+            return jsonify({"ok": False, "error": err}), 400
+        except Exception as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 500
+
+    selected_model = model_name if model_name in ALLOWED_GEMINI_MODELS else "gemini-3.8-flash"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
     try:
         resp = requests.post(
             url,
             json={"contents": [{"role": "user", "parts": [{"text": "Reply with OK only."}]}]},
-            timeout=10,
+            timeout=15,
         )
         if resp.status_code == 200:
-            return jsonify({"ok": True, "message": f"Connected successfully to {selected_model}!"})
+            return jsonify({"ok": True, "message": f"Connected successfully to Gemini ({selected_model})!"})
         err = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
         return jsonify({"ok": False, "error": err}), 400
     except Exception as exc:

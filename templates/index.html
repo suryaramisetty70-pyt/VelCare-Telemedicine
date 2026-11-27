@@ -521,24 +521,32 @@
       <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
       <h3 style="margin-bottom:6px; color:#0c4a6e;">AI &amp; API Settings</h3>
       <p class="muted" style="margin-bottom:16px;">
-        Add your Google Gemini API key directly here to enable live Generative AI responses without modifying any backend files.
-        Stored safely in your browser.
+        Connect <strong>Groq AI</strong> (recommended, ultra-fast) or <strong>Google Gemini</strong> directly here without changing any backend files. Stored safely in your browser.
       </p>
 
       <form onsubmit="saveApiSettings(event)">
         <div class="form-group">
-          <label for="geminiApiKeyInput">Google Gemini API Key</label>
+          <label for="aiProviderSelect">AI Provider</label>
+          <select id="aiProviderSelect" onchange="onProviderChange()">
+            <option value="groq">Groq AI (Recommended — Ultra Fast)</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="geminiApiKeyInput" id="apiKeyLabel">Groq API Key (starts with gsk_...)</label>
           <div style="display:flex; gap:8px;">
-            <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." autocomplete="off" />
+            <input type="password" id="geminiApiKeyInput" placeholder="gsk_..." autocomplete="off" />
             <button type="button" class="btn btn-sm btn-outline" id="toggleKeyVisBtn" onclick="toggleApiKeyVisibility()">Show</button>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="geminiModelSelect">Gemini Model</label>
+          <label for="geminiModelSelect">Model</label>
           <select id="geminiModelSelect">
-            <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended)</option>
-            <option value="gemini-3.8-pro">gemini-3.8-pro</option>
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended)</option>
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fastest)</option>
+            <option value="gemma2-9b-it">gemma2-9b-it</option>
           </select>
         </div>
 

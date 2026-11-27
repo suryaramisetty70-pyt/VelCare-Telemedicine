@@ -4,9 +4,24 @@ let appointmentsList = [];
 let activeConsultationId = null;
 let localMediaStream = null;
 let serverGeminiConfigured = false;
+let serverGroqConfigured = false;
 
+const LS_PROVIDER_KEY = "velcare_ai_provider";
 const LS_API_KEY = "velcare_gemini_api_key";
 const LS_MODEL_KEY = "velcare_gemini_model";
+
+const PROVIDER_MODELS = {
+  groq: [
+    { value: "llama-3.3-70b-versatile", label: "llama-3.3-70b-versatile (Recommended)" },
+    { value: "llama-3.1-8b-instant", label: "llama-3.1-8b-instant (Fastest)" },
+    { value: "gemma2-9b-it", label: "gemma2-9b-it" },
+  ],
+  gemini: [
+    { value: "gemini-3.8-flash", label: "gemini-3.8-flash (Recommended)" },
+    { value: "gemini-2.5-flash", label: "gemini-2.5-flash" },
+    { value: "gemini-2.0-flash", label: "gemini-2.0-flash" },
+  ],
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   const dateInput = document.getElementById("apptDate");
@@ -52,10 +67,17 @@ async function checkHealth() {
     const res = await fetch("/api/health");
     const data = await res.json();
     serverGeminiConfigured = Boolean(data.gemini_configured);
+    serverGroqConfigured = Boolean(data.groq_configured);
     updateAiEngineBadge();
   } catch (e) {
     console.error(e);
   }
+}
+
+function getSavedProvider() {
+  const key = getSavedApiKey();
+  if (key.startsWith("gsk_")) return "groq";
+  return localStorage.getItem(LS_PROVIDER_KEY) || "groq";
 }
 
 function getSavedApiKey() {
@@ -63,27 +85,61 @@ function getSavedApiKey() {
 }
 
 function getSavedModel() {
-  const m = localStorage.getItem(LS_MODEL_KEY);
-  if (!m || m === "gemini-2.0-flash" || m === "gemini-1.5-flash") return "gemini-3.8-flash";
-  return m;
+  const prov = getSavedProvider();
+  const saved = localStorage.getItem(LS_MODEL_KEY);
+  const valid = PROVIDER_MODELS[prov].map((m) => m.value);
+  if (saved && valid.includes(saved)) return saved;
+  return PROVIDER_MODELS[prov][0].value;
 }
 
 function updateAiEngineBadge() {
   const badge = document.getElementById("aiEngineBadge");
   if (!badge) return;
   const userKey = getSavedApiKey();
+  const prov = getSavedProvider();
   let label = "NLP + Safety Engine Active";
   if (userKey) {
-    label = `Gemini AI Active (${getSavedModel()})`;
+    const provName = prov === "groq" ? "Groq AI" : "Gemini AI";
+    label = `${provName} Active (${getSavedModel()})`;
+  } else if (serverGroqConfigured) {
+    label = "Groq AI Connected (Server)";
   } else if (serverGeminiConfigured) {
     label = "Gemini AI Connected (Server)";
   }
   badge.innerHTML = `<span class="pulse-dot"></span>${label}`;
 }
 
+function populateModelOptions(provider, selectedModel = null) {
+  const select = document.getElementById("geminiModelSelect");
+  const label = document.getElementById("apiKeyLabel");
+  const input = document.getElementById("geminiApiKeyInput");
+  const options = PROVIDER_MODELS[provider] || PROVIDER_MODELS.groq;
+
+  select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
+  if (selectedModel && options.some((o) => o.value === selectedModel)) {
+    select.value = selectedModel;
+  }
+
+  if (provider === "groq") {
+    label.textContent = "Groq API Key (starts with gsk_...)";
+    input.placeholder = "gsk_...";
+  } else {
+    label.textContent = "Google Gemini API Key";
+    input.placeholder = "AIzaSy...";
+  }
+}
+
+function onProviderChange() {
+  const prov = document.getElementById("aiProviderSelect").value;
+  populateModelOptions(prov);
+  document.getElementById("apiTestStatus").textContent = "";
+}
+
 function openSettingsModal() {
+  const prov = getSavedProvider();
+  document.getElementById("aiProviderSelect").value = prov;
+  populateModelOptions(prov, getSavedModel());
   document.getElementById("geminiApiKeyInput").value = getSavedApiKey();
-  document.getElementById("geminiModelSelect").value = getSavedModel();
   document.getElementById("apiTestStatus").textContent = "";
   document.getElementById("settingsModal").classList.remove("hidden");
 }
@@ -106,8 +162,11 @@ function toggleApiKeyVisibility() {
 
 function saveApiSettings(e) {
   e.preventDefault();
+  const provider = document.getElementById("aiProviderSelect").value;
   const key = document.getElementById("geminiApiKeyInput").value.trim();
   const model = document.getElementById("geminiModelSelect").value;
+
+  localStorage.setItem(LS_PROVIDER_KEY, provider);
   if (key) {
     localStorage.setItem(LS_API_KEY, key);
   } else {
@@ -116,7 +175,8 @@ function saveApiSettings(e) {
   localStorage.setItem(LS_MODEL_KEY, model);
   updateAiEngineBadge();
   closeSettingsModal();
-  showToast(key ? `Gemini AI enabled (${model})!` : "Using built-in NLP engine.");
+  const name = provider === "groq" ? "Groq AI" : "Gemini AI";
+  showToast(key ? `${name} enabled (${model})!` : "Using built-in NLP engine.");
 }
 
 function clearApiSettings() {
@@ -128,6 +188,7 @@ function clearApiSettings() {
 }
 
 async function testApiSettings() {
+  const provider = document.getElementById("aiProviderSelect").value;
   const key = document.getElementById("geminiApiKeyInput").value.trim();
   const model = document.getElementById("geminiModelSelect").value;
   const statusEl = document.getElementById("apiTestStatus");
@@ -135,10 +196,10 @@ async function testApiSettings() {
   statusEl.textContent = "Testing connection...";
 
   try {
-    const res = await fetch("/api/settings/test-gemini", {
+    const res = await fetch("/api/settings/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, model }),
+      body: JSON.stringify({ provider, api_key: key, model }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -340,6 +401,7 @@ async function sendChatMessage(e) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: text,
+        provider: getSavedProvider(),
         api_key: getSavedApiKey(),
         model: getSavedModel(),
       }),
